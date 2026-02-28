@@ -5,6 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import VoiceButton from '@/components/VoiceButton'
 import { saveSession, scoreToRank } from '@/lib/storage'
 import type { SavedSession } from '@/lib/storage'
+import {
+  PROFESSORS,
+  TOPIC_PROFESSORS,
+  SURPRISE_PROFESSOR_IDS,
+} from '@/lib/professors'
+import type { ProfessorDef } from '@/lib/professors'
 
 // ---------- Types ----------
 
@@ -61,6 +67,58 @@ function parseAndStripScore(text: string): { content: string; score?: Score } {
       rank: match[2].trim().toUpperCase(),
     },
   }
+}
+
+function pickRandomSurpriseProfessor(): ProfessorDef {
+  const id = SURPRISE_PROFESSOR_IDS[Math.floor(Math.random() * SURPRISE_PROFESSOR_IDS.length)]
+  return PROFESSORS[id]
+}
+
+// ---------- Professor Avatar ----------
+
+function ProfessorAvatar({
+  professor,
+  size = 'md',
+}: {
+  professor: ProfessorDef
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const dims = size === 'sm' ? 80 : size === 'lg' ? 100 : 88
+  const fontSize = size === 'sm' ? 11 : size === 'lg' ? 19 : 14
+  const imgSrc = `/professors/${professor.id}.png`
+
+  const [imgFailed, setImgFailed] = useState(false)
+
+  if (imgFailed) {
+    const fallbackDims = size === 'sm' ? 36 : size === 'lg' ? 52 : 44
+    const fallbackFont = size === 'sm' ? 13 : size === 'lg' ? 20 : 16
+    return (
+      <div
+        className="rounded-full flex items-center justify-center font-bold flex-shrink-0 border select-none"
+        style={{
+          width: fallbackDims,
+          height: fallbackDims,
+          fontSize: fallbackFont,
+          background: professor.avatarBg,
+          borderColor: professor.avatarBorder,
+          color: professor.avatarText,
+          letterSpacing: '0.01em',
+        }}
+      >
+        {professor.initials}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={professor.name}
+      className="flex-shrink-0 select-none"
+      style={{ width: dims, height: dims, objectFit: 'contain' }}
+      onError={() => setImgFailed(true)}
+    />
+  )
 }
 
 // ---------- Sub-components ----------
@@ -122,9 +180,11 @@ function ScoreBadge({ score }: { score: Score }) {
 
 function MessageBubble({
   message,
+  professor,
   isStreaming,
 }: {
   message: Message
+  professor: ProfessorDef
   isStreaming?: boolean
 }) {
   const isProfessor = message.role === 'professor'
@@ -138,9 +198,12 @@ function MessageBubble({
     >
       {isProfessor && (
         <div className="flex items-center gap-2 mb-2 ml-1">
-          <div className="w-0.5 h-4 bg-red-600 rounded-full" />
-          <span className="text-[10px] font-semibold text-red-600 uppercase tracking-widest">
-            The Professor
+          <ProfessorAvatar professor={professor} size="sm" />
+          <span
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: professor.accentColor }}
+          >
+            {professor.name}
           </span>
         </div>
       )}
@@ -150,10 +213,15 @@ function MessageBubble({
           rounded-lg px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap
           ${
             isProfessor
-              ? 'bg-zinc-900 border border-zinc-800 text-zinc-200 w-full'
+              ? 'bg-zinc-900 border text-zinc-200 w-full'
               : 'bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 max-w-xl'
           }
         `}
+        style={
+          isProfessor
+            ? { borderColor: `${professor.avatarBorder}40` }
+            : undefined
+        }
       >
         {isEmpty && isStreaming ? (
           <ThinkingDots />
@@ -161,7 +229,10 @@ function MessageBubble({
           <>
             {message.content}
             {isStreaming && message.content && (
-              <span className="inline-block w-px h-4 bg-red-500 ml-0.5 animate-cursor-blink" />
+              <span
+                className="inline-block w-px h-4 ml-0.5 animate-cursor-blink"
+                style={{ backgroundColor: professor.accentColor }}
+              />
             )}
           </>
         )}
@@ -214,9 +285,11 @@ function WeaknessPanel({
 function FinalAssessmentPanel({
   content,
   isLoading,
+  professor,
 }: {
   content: string
   isLoading: boolean
+  professor: ProfessorDef
 }) {
   const gradeMatch = !isLoading ? content.match(/OVERALL GRADE:\s*([A-Za-z]+)/) : null
   const grade = gradeMatch ? gradeMatch[1].toUpperCase() : null
@@ -224,8 +297,11 @@ function FinalAssessmentPanel({
   return (
     <div className="max-w-3xl mr-auto">
       <div className="flex items-center gap-2 mb-2 ml-1">
-        <div className="w-0.5 h-4 bg-violet-600 rounded-full" />
-        <span className="text-[10px] font-semibold text-violet-600 uppercase tracking-widest">
+        <ProfessorAvatar professor={professor} size="sm" />
+        <span
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: professor.accentColor }}
+        >
           Final Assessment
         </span>
         {grade && (
@@ -234,14 +310,20 @@ function FinalAssessmentPanel({
           </span>
         )}
       </div>
-      <div className="bg-zinc-900 border border-violet-900/40 rounded-xl px-5 py-5">
+      <div
+        className="bg-zinc-900 border rounded-xl px-5 py-5"
+        style={{ borderColor: `${professor.avatarBorder}50` }}
+      >
         {isLoading && !content ? (
           <ThinkingDots />
         ) : (
           <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">
             {content}
             {isLoading && content && (
-              <span className="inline-block w-px h-4 bg-violet-500 ml-0.5 animate-cursor-blink" />
+              <span
+                className="inline-block w-px h-4 ml-0.5 animate-cursor-blink"
+                style={{ backgroundColor: professor.accentColor }}
+              />
             )}
           </p>
         )}
@@ -339,7 +421,20 @@ function ChatContent() {
 
   const displayTopic = isCustomTopicMode && topicParam ? topicParam : category
 
-  // Stable session ID for this page load
+  // ---------- Professor selection ----------
+  // For a mapped category, use the assigned professor.
+  // For unmapped categories (Surprise Me, Debate, Custom), pick a random one — stable for this session.
+  const mainProfessorId = TOPIC_PROFESSORS[category]
+
+  // Lazy ref: picks once on first render, never changes
+  const surpriseProfRef = useRef<ProfessorDef>(
+    !mainProfessorId ? pickRandomSurpriseProfessor() : PROFESSORS['socrates']
+  )
+  const professor: ProfessorDef = mainProfessorId
+    ? PROFESSORS[mainProfessorId]
+    : surpriseProfRef.current
+
+  // ---------- Session state ----------
   const sessionId = useRef(
     `session_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
   ).current
@@ -437,7 +532,7 @@ function ChatContent() {
     }
   }, [buildSavedSession])
 
-  // Save on page unload (browser close / refresh)
+  // Save on page unload
   useEffect(() => {
     const handler = () => maybeSave()
     window.addEventListener('beforeunload', handler)
@@ -470,7 +565,12 @@ function ChatContent() {
         const response = await fetch('/api/generate-prompt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: effectiveCategory, difficulty, mode }),
+          body: JSON.stringify({
+            category: effectiveCategory,
+            difficulty,
+            mode,
+            professor: professor.id,
+          }),
         })
 
         if (!response.ok || !response.body) {
@@ -508,7 +608,7 @@ function ChatContent() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : 'Failed to connect to The Professor.'
+            err instanceof Error ? err.message : 'Failed to connect.'
           )
         }
       } finally {
@@ -529,7 +629,6 @@ function ChatContent() {
   const detectPatterns = useCallback(
     async (fullHistory: ApiMessage[]) => {
       try {
-        // Build a readable transcript; skip the initial meta-request in regular mode
         const slice = isCustomArgMode ? fullHistory : fullHistory.slice(1)
         const transcript = slice
           .map((m) =>
@@ -558,7 +657,7 @@ function ChatContent() {
           setPatterns(data.patterns as string[])
         }
       } catch {
-        // Pattern detection is non-critical — fail silently
+        // Non-critical — fail silently
       }
     },
     [isCustomArgMode]
@@ -591,7 +690,12 @@ function ChatContent() {
       const response = await fetch('/api/critique', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newApiHistory, difficulty, mode }),
+        body: JSON.stringify({
+          messages: newApiHistory,
+          difficulty,
+          mode,
+          professor: professor.id,
+        }),
       })
 
       if (!response.ok || !response.body) {
@@ -614,7 +718,10 @@ function ChatContent() {
 
       const { content, score } = parseAndStripScore(fullText)
       const professorMsg: Message = { role: 'professor', content, score }
-      const updatedApiHistory: ApiMessage[] = [...newApiHistory, { role: 'assistant' as const, content: fullText }]
+      const updatedApiHistory: ApiMessage[] = [
+        ...newApiHistory,
+        { role: 'assistant' as const, content: fullText },
+      ]
 
       setMessages([...newMessages, professorMsg])
       setApiHistory(updatedApiHistory)
@@ -623,11 +730,10 @@ function ChatContent() {
         setScores((prev) => [...prev, score.value])
       }
 
-      // Fire-and-forget pattern detection after each critique
       detectPatterns(updatedApiHistory)
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'The Professor encountered an error.'
+        err instanceof Error ? err.message : 'An error occurred.'
       )
     } finally {
       setIsStreaming(false)
@@ -644,7 +750,7 @@ function ChatContent() {
     const transcript = messages
       .map((m) =>
         m.role === 'professor'
-          ? `THE PROFESSOR: ${m.content}`
+          ? `${professor.name.toUpperCase()}: ${m.content}`
           : `STUDENT: ${m.content}`
       )
       .join('\n\n')
@@ -660,7 +766,10 @@ function ChatContent() {
       const response = await fetch('/api/final-assessment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: assessmentMessages }),
+        body: JSON.stringify({
+          messages: assessmentMessages,
+          professor: professor.id,
+        }),
       })
 
       if (!response.ok || !response.body) {
@@ -694,7 +803,7 @@ function ChatContent() {
     const transcript = messages
       .map((m) =>
         m.role === 'professor'
-          ? `THE PROFESSOR: ${m.content}`
+          ? `${professor.name.toUpperCase()}: ${m.content}`
           : `STUDENT: ${m.content}`
       )
       .join('\n\n')
@@ -710,7 +819,10 @@ function ChatContent() {
       const response = await fetch('/api/weakness-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: analysisMessages }),
+        body: JSON.stringify({
+          messages: analysisMessages,
+          professor: professor.id,
+        }),
       })
 
       if (!response.ok || !response.body) throw new Error(`Server error ${response.status}`)
@@ -764,7 +876,7 @@ function ChatContent() {
     const divider = '\u2500'.repeat(48)
     const lines: string[] = [
       'ReverseGPT Session',
-      `Topic: ${displayTopic}  \u00b7  Difficulty: ${difficulty}`,
+      `${professor.name} · ${displayTopic}  ·  Difficulty: ${difficulty}`,
       date,
       '',
       divider,
@@ -773,8 +885,8 @@ function ChatContent() {
 
     for (const m of messages) {
       if (m.role === 'professor') {
-        const scoreStr = m.score ? ` [${m.score.value}/100 \u00b7 ${m.score.rank}]` : ''
-        lines.push(`THE PROFESSOR${scoreStr}:`)
+        const scoreStr = m.score ? ` [${m.score.value}/100 · ${m.score.rank}]` : ''
+        lines.push(`${professor.name.toUpperCase()}${scoreStr}:`)
         lines.push(m.content)
       } else {
         lines.push('YOU:')
@@ -835,7 +947,7 @@ function ChatContent() {
     <div className="flex flex-col h-screen bg-zinc-950">
       {/* ── Header ── */}
       <header className="flex-shrink-0 border-b border-zinc-800/80 bg-zinc-950">
-        {/* Row 1: nav + title + actions */}
+        {/* Row 1: nav + professor + topic + actions */}
         <div className="flex items-center gap-4 px-6 py-3">
           <button
             onClick={handleBack}
@@ -844,10 +956,12 @@ function ChatContent() {
             ← Back
           </button>
 
-          <div className="flex-1 flex items-center gap-2.5 min-w-0">
-            <div className="w-0.5 h-5 bg-red-600 rounded-full flex-shrink-0" />
-            <span className="text-sm font-medium text-zinc-300 flex-shrink-0">
-              {isDebateMode ? 'Debate Mode' : 'The Professor'}
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span
+              className="text-sm font-medium flex-shrink-0"
+              style={{ color: professor.accentColor }}
+            >
+              {professor.name}
             </span>
             <span className="text-zinc-700 text-sm flex-shrink-0">&middot;</span>
             <span className="text-zinc-500 text-sm truncate">{displayTopic}</span>
@@ -893,11 +1007,12 @@ function ChatContent() {
             <div className="flex items-center gap-1.5">
               <div
                 className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  isStreaming ? 'bg-red-500 animate-pulse' : 'bg-zinc-700'
+                  isStreaming ? 'animate-pulse' : 'bg-zinc-700'
                 }`}
+                style={isStreaming ? { backgroundColor: professor.accentColor } : undefined}
               />
               <span className="text-zinc-600 text-xs">
-                {isStreaming ? 'Analysing\u2026' : 'Waiting'}
+                {isStreaming ? 'Thinking\u2026' : 'Waiting'}
               </span>
             </div>
           </div>
@@ -914,16 +1029,25 @@ function ChatContent() {
               onClick={() => setDifficulty(d)}
               className={`px-2.5 py-0.5 text-[10px] rounded border transition-all duration-150 ${
                 difficulty === d
-                  ? 'border-red-800/70 bg-red-900/20 text-red-400'
+                  ? 'text-zinc-200'
                   : 'border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700'
               }`}
+              style={
+                difficulty === d
+                  ? {
+                      borderColor: `${professor.avatarBorder}80`,
+                      backgroundColor: `${professor.avatarBg}60`,
+                      color: professor.accentColor,
+                    }
+                  : undefined
+              }
             >
               {DIFF_ABBR[d]}
             </button>
           ))}
         </div>
 
-        {/* Row 3: detected patterns (only shown when present) */}
+        {/* Row 3: detected patterns */}
         {patterns.length > 0 && (
           <div className="flex items-center gap-2 px-6 pb-2.5 flex-wrap">
             <span className="text-[10px] text-zinc-700 uppercase tracking-widest flex-shrink-0">
@@ -932,7 +1056,13 @@ function ChatContent() {
             {patterns.map((p) => (
               <span
                 key={p}
-                className="px-2 py-0.5 text-[10px] bg-zinc-800/80 border border-zinc-700/60 text-zinc-500 rounded-full whitespace-nowrap"
+                className="px-2 py-0.5 text-[10px] rounded-full whitespace-nowrap border"
+                style={{
+                  backgroundColor: `${professor.avatarBg}80`,
+                  borderColor: `${professor.avatarBorder}50`,
+                  color: professor.accentColor,
+                  opacity: 0.85,
+                }}
               >
                 {p}
               </span>
@@ -947,25 +1077,35 @@ function ChatContent() {
         {isCustomArgMode && messages.length === 0 && !isStreaming && !error && (
           <div className="max-w-3xl mr-auto">
             <div className="flex items-center gap-2 mb-2 ml-1">
-              <div className="w-0.5 h-4 bg-red-600 rounded-full" />
-              <span className="text-[10px] font-semibold text-red-600 uppercase tracking-widest">
-                The Professor
+              <ProfessorAvatar professor={professor} size="sm" />
+              <span
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: professor.accentColor }}
+              >
+                {professor.name}
               </span>
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-lg px-5 py-4 text-sm italic">
-              Submit your argument. The Professor will critique it.
+            <div
+              className="border text-zinc-500 rounded-lg px-5 py-4 text-sm italic"
+              style={{
+                backgroundColor: `${professor.avatarBg}40`,
+                borderColor: `${professor.avatarBorder}30`,
+              }}
+            >
+              Submit your argument. {professor.name} will critique it.
             </div>
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
+          <MessageBubble key={i} message={msg} professor={professor} />
         ))}
 
         {/* Streaming message */}
         {isStreaming && (
           <MessageBubble
             message={{ role: 'professor', content: streamingContent }}
+            professor={professor}
             isStreaming
           />
         )}
@@ -1011,6 +1151,7 @@ function ChatContent() {
           <FinalAssessmentPanel
             content={finalAssessment ?? ''}
             isLoading={isLoadingFinalAssessment}
+            professor={professor}
           />
         )}
 
@@ -1039,13 +1180,25 @@ function ChatContent() {
               />
             )}
 
-            {/* Final Assessment CTA — shown above textarea */}
+            {/* Final Assessment CTA */}
             {showFinalAssessmentButton && (
               <button
                 onClick={handleFinalAssessment}
-                className="w-full mb-3 py-2 text-xs text-zinc-600 border border-dashed border-zinc-800 rounded-lg hover:border-zinc-600 hover:text-zinc-400 transition-all focus:outline-none"
+                className="w-full mb-3 py-2 text-xs border border-dashed rounded-lg transition-all focus:outline-none"
+                style={{
+                  borderColor: `${professor.avatarBorder}50`,
+                  color: `${professor.accentColor}99`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = `${professor.avatarBorder}90`
+                  e.currentTarget.style.color = professor.accentColor
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = `${professor.avatarBorder}50`
+                  e.currentTarget.style.color = `${professor.accentColor}99`
+                }}
               >
-                Ready for your final assessment? →
+                Request final assessment from {professor.name} →
               </button>
             )}
 
@@ -1057,7 +1210,16 @@ function ChatContent() {
                 onKeyDown={handleKeyDown}
                 placeholder={inputPlaceholder}
                 rows={3}
-                className="flex-1 bg-zinc-900 border border-zinc-700/80 rounded-lg px-4 py-3 text-sm text-zinc-100 placeholder-zinc-700 resize-none focus:outline-none focus:border-zinc-500 transition-colors leading-relaxed"
+                className="flex-1 bg-zinc-900 border border-zinc-700/80 rounded-lg px-4 py-3 text-sm text-zinc-100 placeholder-zinc-700 resize-none focus:outline-none transition-colors leading-relaxed"
+                style={{
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = `${professor.avatarBorder}70`
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = ''
+                }}
               />
 
               <div className="flex flex-col gap-2 pb-0.5">
@@ -1066,7 +1228,8 @@ function ChatContent() {
                   onClick={submitAnswer}
                   disabled={!input.trim() || isStreaming}
                   title="Submit"
-                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-red-700 text-white hover:bg-red-600 disabled:opacity-25 disabled:cursor-not-allowed transition-colors focus:outline-none"
+                  className="flex items-center justify-center w-10 h-10 rounded-lg text-white hover:opacity-90 disabled:opacity-25 disabled:cursor-not-allowed transition-opacity focus:outline-none"
+                  style={{ backgroundColor: professor.avatarBorder }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                     <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z" />
@@ -1078,7 +1241,7 @@ function ChatContent() {
             {/* Footer: hint + secondary actions */}
             <div className="flex items-center justify-between mt-2">
               <p className="text-zinc-700 text-[11px]">
-                The Professor is watching. Choose your words carefully.
+                {professor.name} is watching. Choose your words carefully.
               </p>
               <div className="flex items-center gap-2">
                 <button

@@ -1,11 +1,24 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { PROFESSORS } from '@/lib/professors'
 
 const client = new Anthropic()
 
-const SYSTEM = `You are The Professor — an incisive and analytically honest assessor of critical thinking and argumentation. You have just completed a session with a student.
+export async function POST(request: NextRequest) {
+  const { messages, professor: professorId = 'socrates' } = await request.json()
 
-Provide a comprehensive final assessment using EXACTLY this structure:
+  const prof = PROFESSORS[professorId]
+  const profName = prof?.name ?? 'The Professor'
+
+  const personaPrefix = prof
+    ? `${prof.personaBlock}
+
+`
+    : ''
+
+  const SYSTEM = `${personaPrefix}You are ${profName}. You have just completed a session with a student. Provide a comprehensive final assessment in your distinctive voice.
+
+Use EXACTLY this structure:
 
 OVERALL GRADE: [single letter — Bot, F, D, C, B, A, or S]
 
@@ -25,7 +38,7 @@ PATTERNS DETECTED:
 - [Pattern]
 
 STUDY RECOMMENDATION:
-[2–3 sentences. Personalised to this student's demonstrated gaps. Name specific concepts, thinkers, works, or practices they should engage with. Be direct — not generic advice like "think more carefully".]
+[2–3 sentences. Personalised to this student's demonstrated gaps. Name specific concepts, thinkers, works, or practices they should engage with. Be direct — not generic advice like "think more carefully". Frame this in your own voice.]
 
 Grade guide:
 - Bot: No original reasoning — pure regurgitation or refusal to engage
@@ -39,10 +52,8 @@ Grade guide:
 Rules:
 - Be analytically honest — do not soften assessments to spare feelings
 - Reference the student's specific arguments and words
-- The study recommendation must be genuinely personalised to what this student got wrong`
-
-export async function POST(request: NextRequest) {
-  const { messages } = await request.json()
+- Speak in your character's voice throughout
+- The study recommendation must be genuinely personalised`
 
   const encoder = new TextEncoder()
 
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest) {
         controller.close()
       } catch (err) {
         console.error('[final-assessment] error:', err)
-        const message = err instanceof Error ? err.message : 'Unknown error'
+        const message = err instanceof Error ? err.message : 'Unknown API error'
         try { controller.enqueue(encoder.encode(`__API_ERROR__:${message}`)) } catch {}
         try { controller.close() } catch {}
       }

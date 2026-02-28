@@ -1,11 +1,22 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { PROFESSORS } from '@/lib/professors'
 
 const client = new Anthropic()
 
-const SYSTEM = `You are The Professor — an expert diagnostician of flawed reasoning. You have reviewed a student's conversation where they responded to challenging intellectual questions.
+export async function POST(request: NextRequest) {
+  const { messages, professor: professorId = 'socrates' } = await request.json()
 
-Your task: identify exactly 3 recurring reasoning weaknesses that appear across multiple responses. Be specific and analytically honest.
+  const prof = PROFESSORS[professorId]
+  const profName = prof?.name ?? 'The Professor'
+
+  const personaPrefix = prof
+    ? `${prof.personaBlock}
+
+`
+    : ''
+
+  const SYSTEM = `${personaPrefix}You have just completed a tutoring session with a student. Speaking as ${profName} — in your distinctive voice — identify exactly 3 recurring reasoning weaknesses that appear across multiple of the student's responses.
 
 Use this exact format for each weakness:
 
@@ -14,7 +25,7 @@ WEAKNESS [N] — [Precise name of the weakness, e.g. "Appeal to Intuition", "Fal
 
 How it appeared: [Direct reference to the student's actual words or argument that exemplified this weakness. Be specific.]
 
-Exercise: [One targeted, actionable practice — a question to wrestle with, a mental habit to build, or a specific type of argument to write — designed to address this exact weakness.]
+Exercise: [One targeted, actionable practice — a question to wrestle with, a mental habit to build, or a specific type of argument to write — designed to address this exact weakness. Frame it in your own voice.]
 
 ────────────────────────────────────────
 
@@ -22,12 +33,10 @@ Exercise: [One targeted, actionable practice — a question to wrestle with, a m
 
 Rules:
 - Name weaknesses precisely — use established terms where they apply
-- Reference the student's actual words, not paraphrases
+- Reference the student's actual words, not vague paraphrases
 - Make exercises genuinely useful and specific to what was said
-- Do not soften your assessment — analytical honesty serves the student better than comfort`
-
-export async function POST(request: NextRequest) {
-  const { messages } = await request.json()
+- Speak in your character's voice throughout
+- Do not soften your assessment`
 
   const encoder = new TextEncoder()
 
@@ -52,7 +61,7 @@ export async function POST(request: NextRequest) {
 
         controller.close()
       } catch (err) {
-        console.error('[weakness-report] Anthropic API error:', err)
+        console.error('[weakness-report] error:', err)
         const message = err instanceof Error ? err.message : 'Unknown API error'
         try { controller.enqueue(encoder.encode(`__API_ERROR__:${message}`)) } catch {}
         try { controller.close() } catch {}
