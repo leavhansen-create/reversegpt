@@ -1,4 +1,5 @@
 'use client'
+import { AuthButton } from '../lib/AuthButton'
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -383,11 +384,14 @@ export default function Home() {
 
         {/* Hero */}
         <div className="mb-12">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-1 h-9 bg-red-600 rounded-full" />
-            <h1 className="text-4xl font-bold tracking-tight text-zinc-100">
-              ReverseGPT
-            </h1>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-9 bg-red-600 rounded-full" />
+              <h1 className="text-4xl font-bold tracking-tight text-zinc-100">
+                ReverseGPT
+              </h1>
+            </div>
+            <AuthButton />
           </div>
           <p className="text-zinc-500 text-base ml-7 leading-relaxed">
             The AI asks. You answer. The Professor tears it apart.
