@@ -1,5 +1,6 @@
 'use client'
 import { AuthButton } from '../lib/AuthButton'
+import { useAuth } from '../lib/useAuth'
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -258,7 +259,7 @@ function SessionCard({ session }: { session: SavedSession }) {
 
 // ---------- Progress Section ----------
 
-function ProgressSection({ sessions }: { sessions: SavedSession[] }) {
+function ProgressSection({ sessions, streak }: { sessions: SavedSession[], streak: number | null }) {
   if (sessions.length === 0) return null
 
   const totalSessions = sessions.length
@@ -279,7 +280,7 @@ function ProgressSection({ sessions }: { sessions: SavedSession[] }) {
         <div className="flex-1 h-px bg-zinc-800" />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className={`grid gap-3 mb-4 grid-cols-2 ${streak !== null ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         {/* Total sessions */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
           <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Sessions</p>
@@ -310,6 +311,17 @@ function ProgressSection({ sessions }: { sessions: SavedSession[] }) {
           )}
         </div>
 
+        {/* Streak — only shown when logged in */}
+        {streak !== null && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Streak</p>
+            <p className="text-2xl font-bold font-mono text-amber-400">
+              {streak}
+              <span className="text-base ml-1">🔥</span>
+            </p>
+          </div>
+        )}
+
         {/* Most common pattern */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
           <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Top Pattern</p>
@@ -338,6 +350,7 @@ function ProgressSection({ sessions }: { sessions: SavedSession[] }) {
 
 export default function Home() {
   const router = useRouter()
+  const { user, signInWithGoogle } = useAuth()
   const [showCustomModal, setShowCustomModal] = useState(false)
   const [customTopic, setCustomTopic] = useState('')
   const topicInputRef = useRef<HTMLInputElement>(null)
@@ -346,11 +359,34 @@ export default function Home() {
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const [dashboardLoaded, setDashboardLoaded] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [puzzleSolved, setPuzzleSolved] = useState(false)
+  const [leaderboard, setLeaderboard] = useState<any[]>([])
+  const [streak, setStreak] = useState<number | null>(null)
 
   useEffect(() => {
     setSessions(loadSessions())
     setDashboardLoaded(true)
   }, [])
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const solved = localStorage.getItem(`dailyPuzzleSolved_${today}`)
+    if (solved) {
+      setPuzzleSolved(true)
+      fetch('/api/daily-puzzle/leaderboard')
+        .then((r) => r.json())
+        .then((data) => setLeaderboard(data.leaderboard || []))
+        .catch(() => {})
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    fetch(`/api/daily-puzzle/streak?userId=${user.uid}`)
+      .then((r) => r.json())
+      .then((data) => setStreak(data.streak ?? null))
+      .catch(() => {})
+  }, [user])
 
   const handleCustomTopic = () => {
     const t = customTopic.trim()
@@ -400,54 +436,39 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Special Mode Cards — Debate + Custom */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
-
-          {/* Debate Mode — amber accent */}
-          <button
-            onClick={() => router.push('/chat?category=Debate&mode=debate')}
-            className="group text-left p-6 rounded-xl border border-amber-900/50 bg-amber-950/20 hover:border-amber-700/70 hover:bg-amber-950/30 transition-all duration-200 focus:outline-none"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-3xl leading-none">⇌</span>
-              <span className="text-[10px] text-amber-600 uppercase tracking-widest border border-amber-900/60 bg-amber-950/50 px-2 py-0.5 rounded">
-                Special
-              </span>
+        {/* Daily Puzzle + Leaderboard Cards */}
+        <div className="flex gap-4 mb-8">
+          <a href="/daily-puzzle" className="flex-1 block p-5 rounded-xl border border-red-800/50 bg-red-950/20 hover:border-red-600/70 hover:bg-red-950/30 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] text-red-500 uppercase tracking-widest mb-1">Daily Puzzle</div>
+                <p className="text-zinc-100 font-semibold text-sm">Solve to see leaderboard</p>
+              </div>
+              <span className="text-2xl">🎯</span>
             </div>
-            <h3 className="text-zinc-100 font-semibold text-base mb-1.5">
-              Debate Mode
-            </h3>
-            <p className="text-amber-800 text-sm leading-relaxed">
-              The Professor declares a controversial position. You argue against it. Ground ceded only when your argument demands it.
-            </p>
-            <div className="mt-5 flex items-center gap-1.5 text-amber-700 text-xs group-hover:text-amber-500 transition-colors">
-              <span>Start debate</span>
-              <span className="group-hover:translate-x-0.5 transition-transform inline-block">→</span>
+          </a>
+          {puzzleSolved ? (
+            <a href="/daily-puzzle/leaderboard" className="flex-1 block p-5 rounded-xl border border-blue-800/50 bg-blue-950/20 hover:border-blue-600/70 hover:bg-blue-950/30 transition-all duration-200">
+              <div className="text-[10px] text-blue-500 uppercase tracking-widest mb-2">Leaderboard</div>
+              {leaderboard.slice(0, 3).map((entry, i) => (
+                <div key={entry.id} className="flex items-center justify-between mb-1">
+                  <span className="text-zinc-400 text-xs truncate">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} {entry.displayName}</span>
+                  <span className="text-zinc-400 text-xs font-mono ml-2">{entry.score}</span>
+                </div>
+              ))}
+              <p className="text-blue-500 text-xs mt-2">See all →</p>
+            </a>
+          ) : (
+            <div className="flex-1 p-5 rounded-xl border border-blue-900/30 bg-blue-950/10 opacity-40 cursor-not-allowed">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-blue-500 uppercase tracking-widest mb-1">Leaderboard</div>
+                  <p className="text-zinc-500 text-sm">Solve puzzle to unlock</p>
+                </div>
+                <span className="text-2xl">🔒</span>
+              </div>
             </div>
-          </button>
-
-          {/* Custom Prompt — blue accent */}
-          <button
-            onClick={openCustomModal}
-            className="group text-left p-6 rounded-xl border border-blue-900/50 bg-blue-950/20 hover:border-blue-700/70 hover:bg-blue-950/30 transition-all duration-200 focus:outline-none"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-3xl leading-none">✎</span>
-              <span className="text-[10px] text-blue-600 uppercase tracking-widest border border-blue-900/60 bg-blue-950/50 px-2 py-0.5 rounded">
-                Custom
-              </span>
-            </div>
-            <h3 className="text-zinc-100 font-semibold text-base mb-1.5">
-              Custom Prompt
-            </h3>
-            <p className="text-blue-800 text-sm leading-relaxed">
-              Name your own topic and get a question on it, or submit an argument directly — The Professor critiques what you bring.
-            </p>
-            <div className="mt-5 flex items-center gap-1.5 text-blue-700 text-xs group-hover:text-blue-500 transition-colors">
-              <span>Choose format</span>
-              <span className="group-hover:translate-x-0.5 transition-transform inline-block">→</span>
-            </div>
-          </button>
+          )}
         </div>
 
         {/* Topic Grid */}
@@ -477,11 +498,43 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Special Mode Cards — Debate + Custom */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+
+          {/* Debate Mode — amber accent */}
+          <button
+            onClick={() => router.push('/chat?category=Debate&mode=debate')}
+            className="group text-left p-6 rounded-xl border border-amber-900/50 bg-amber-950/20 hover:border-amber-700/70 hover:bg-amber-950/30 transition-all duration-200 focus:outline-none"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-3xl leading-none">⇌</span>
+              <span className="text-[10px] text-amber-600 uppercase tracking-widest border border-amber-900/60 bg-amber-950/50 px-2 py-0.5 rounded">Special</span>
+            </div>
+            <h3 className="text-base font-bold text-zinc-100 mb-2">Debate Mode</h3>
+            <p className="text-amber-700/80 text-sm leading-relaxed">The Professor declares a controversial position. You argue against it.</p>
+            <p className="text-amber-600 text-sm mt-3">Start debate →</p>
+          </button>
+
+          {/* Custom Prompt */}
+          <button
+            onClick={() => setShowCustomModal(true)}
+            className="group text-left p-6 rounded-xl border border-blue-900/50 bg-blue-950/20 hover:border-blue-700/70 hover:bg-blue-950/30 transition-all duration-200 focus:outline-none"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-3xl leading-none">✏️</span>
+              <span className="text-[10px] text-blue-600 uppercase tracking-widest border border-blue-900/60 bg-blue-950/50 px-2 py-0.5 rounded">Custom</span>
+            </div>
+            <h3 className="text-base font-bold text-zinc-100 mb-2">Custom Prompt</h3>
+            <p className="text-blue-700/80 text-sm leading-relaxed">Name your own topic or submit an argument directly.</p>
+            <p className="text-blue-600 text-sm mt-3">Choose format →</p>
+          </button>
+        </div>
+
         {/* Dashboard — only shown once localStorage is read */}
         {dashboardLoaded && sessions.length > 0 && (
           <div>
             {/* Your Progress */}
-            <ProgressSection sessions={sessions} />
+            <ProgressSection sessions={sessions} streak={streak} />
 
             {/* Past Sessions */}
             <div>

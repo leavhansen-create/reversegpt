@@ -8,19 +8,9 @@ export function AuthButton() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3">
-        <img
-          src={user.photoURL || ''}
-          alt={user.displayName || ''}
-          className="w-8 h-8 rounded-full"
-        />
-        <span className="text-zinc-400 text-sm">{user.displayName}</span>
-        <button
-          onClick={signOutUser}
-          className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
-        >
-          Sign out
-        </button>
+      <div className="flex items-center gap-2">
+        <span className="text-zinc-500 text-sm">{user.displayName}</span>
+        <button onClick={signOutUser} className="text-zinc-500 text-sm">Sign out</button>
       </div>
     )
   }
