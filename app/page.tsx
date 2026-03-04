@@ -505,8 +505,8 @@ export default function Home() {
             className="group text-left p-6 rounded-xl border border-amber-900/50 bg-amber-950/20 hover:border-amber-700/70 hover:bg-amber-950/30 transition-all duration-200 focus:outline-none"
           >
             <div className="flex items-start justify-between mb-4">
-              <span className="text-3xl leading-none">⇌</span>
-              <span className="text-[10px] text-amber-600 uppercase tracking-widest border border-amber-900/60 bg-amber-950/50 px-2 py-0.5 rounded">Special</span>
+              <span className="text-3xl leading-none h-8 flex items-center">⇌</span>
+              <span className="text-[10px] text-amber-600 uppercase tracking-widest border border-amber-900/60 bg-amber-950/50 px-2 py-0.5 rounded flex-shrink-0">Special</span>
             </div>
             <h3 className="text-base font-bold text-zinc-100 mb-2">Debate Mode</h3>
             <p className="text-amber-700/80 text-sm leading-relaxed">The Professor declares a controversial position. You argue against it.</p>
@@ -519,8 +519,8 @@ export default function Home() {
             className="group text-left p-6 rounded-xl border border-blue-900/50 bg-blue-950/20 hover:border-blue-700/70 hover:bg-blue-950/30 transition-all duration-200 focus:outline-none"
           >
             <div className="flex items-start justify-between mb-4">
-              <span className="text-3xl leading-none">✏️</span>
-              <span className="text-[10px] text-blue-600 uppercase tracking-widest border border-blue-900/60 bg-blue-950/50 px-2 py-0.5 rounded">Custom</span>
+              <span className="text-3xl leading-none h-8 flex items-center">✏️</span>
+              <span className="text-[10px] text-blue-600 uppercase tracking-widest border border-blue-900/60 bg-blue-950/50 px-2 py-0.5 rounded flex-shrink-0">Custom</span>
             </div>
             <h3 className="text-base font-bold text-zinc-100 mb-2">Custom Prompt</h3>
             <p className="text-blue-700/80 text-sm leading-relaxed">Name your own topic or submit an argument directly.</p>
