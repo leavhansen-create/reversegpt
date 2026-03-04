@@ -418,7 +418,7 @@ export default function Home() {
 
         {/* Hero */}
         <div className="mb-12">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-4 mb-3">
             <div className="flex items-center gap-3">
               <div className="w-1 h-9 bg-red-600 rounded-full" />
               <h1 className="text-4xl font-bold tracking-tight text-zinc-100">
