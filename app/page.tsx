@@ -505,7 +505,7 @@ export default function Home() {
             className="group text-left p-6 rounded-xl border border-amber-900/50 bg-amber-950/20 hover:border-amber-700/70 hover:bg-amber-950/30 transition-all duration-200 focus:outline-none"
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-3xl leading-none">⇌</span>
+              <span className="text-3xl leading-none w-8 h-8 flex items-center">⇌</span>
               <span className="text-[10px] text-amber-600 uppercase tracking-widest border border-amber-900/60 bg-amber-950/50 px-2 py-0.5 rounded">Special</span>
             </div>
             <h3 className="text-base font-bold text-zinc-100 mb-2">Debate Mode</h3>
@@ -519,7 +519,7 @@ export default function Home() {
             className="group text-left p-6 rounded-xl border border-blue-900/50 bg-blue-950/20 hover:border-blue-700/70 hover:bg-blue-950/30 transition-all duration-200 focus:outline-none"
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-3xl leading-none">✏️</span>
+              <span className="text-3xl leading-none w-8 h-8 flex items-center">✏️</span>
               <span className="text-[10px] text-blue-600 uppercase tracking-widest border border-blue-900/60 bg-blue-950/50 px-2 py-0.5 rounded">Custom</span>
             </div>
             <h3 className="text-base font-bold text-zinc-100 mb-2">Custom Prompt</h3>
