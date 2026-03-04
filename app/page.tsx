@@ -260,8 +260,6 @@ function SessionCard({ session }: { session: SavedSession }) {
 // ---------- Progress Section ----------
 
 function ProgressSection({ sessions, streak }: { sessions: SavedSession[], streak: number | null }) {
-  if (sessions.length === 0) return null
-
   const totalSessions = sessions.length
   const allScores = sessions.flatMap((s) => s.scores)
   const overallAvg =
@@ -295,7 +293,7 @@ function ProgressSection({ sessions, streak }: { sessions: SavedSession[], strea
               {overallAvg}
             </p>
           ) : (
-            <p className="text-2xl font-bold text-zinc-700 font-mono">—</p>
+            <p className="text-2xl font-bold text-zinc-700 font-mono">N/A</p>
           )}
         </div>
 
@@ -530,15 +528,15 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Dashboard — only shown once localStorage is read */}
+        {/* Progress — shown once localStorage is read */}
+        {dashboardLoaded && (
+          <ProgressSection sessions={sessions} streak={streak} />
+        )}
+
+        {/* Past Sessions — only shown when there are sessions */}
         {dashboardLoaded && sessions.length > 0 && (
           <div>
-            {/* Your Progress */}
-            <ProgressSection sessions={sessions} streak={streak} />
-
-            {/* Past Sessions */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4">
                 <span className="text-[10px] text-zinc-600 uppercase tracking-widest whitespace-nowrap">
                   Past Sessions
                 </span>
@@ -560,7 +558,6 @@ export default function Home() {
                 {sessions.map((session) => (
                   <SessionCard key={session.id} session={session} />
                 ))}
-              </div>
             </div>
           </div>
         )}
