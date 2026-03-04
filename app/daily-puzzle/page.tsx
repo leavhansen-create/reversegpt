@@ -23,6 +23,7 @@ export default function DailyPuzzlePage() {
   const { user } = useAuth()
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [claim, setClaim] = useState('')
   const [evidence, setEvidence] = useState('')
   const [assumptions, setAssumptions] = useState('')
@@ -36,10 +37,17 @@ export default function DailyPuzzlePage() {
   const [showNamePrompt, setShowNamePrompt] = useState(false)
   const [timeLeft, setTimeLeft] = useState('')
 
-  useEffect(() => {
+  const loadPuzzle = () => {
+    setLoading(true)
+    setError('')
     fetch('/api/daily-puzzle')
       .then(r => r.json())
       .then(data => {
+        if (data.error) {
+          setError(data.error)
+          setLoading(false)
+          return
+        }
         setPuzzle(data)
         const date = data.date
         if (localStorage.getItem(`dailyPuzzleSubmitted_${date}`)) {
@@ -50,7 +58,13 @@ export default function DailyPuzzlePage() {
         }
         setLoading(false)
       })
-  }, [])
+      .catch(err => {
+        setError(err.message || 'Failed to load today\'s puzzle.')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => { loadPuzzle() }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -106,6 +120,21 @@ export default function DailyPuzzlePage() {
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <p className="text-zinc-500 text-sm">Loading today's puzzle...</p>
+    </div>
+  )
+
+  if (error) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="text-center">
+        <p className="text-red-500 text-sm mb-2">Failed to load today's puzzle</p>
+        <p className="text-zinc-600 text-xs">{error}</p>
+        <button
+          onClick={loadPuzzle}
+          className="mt-4 text-zinc-500 hover:text-zinc-300 text-xs underline transition-colors"
+        >
+          Try again
+        </button>
+      </div>
     </div>
   )
 
