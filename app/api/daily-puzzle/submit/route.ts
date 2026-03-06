@@ -32,15 +32,16 @@ Then on a new line write exactly: QUOTE: [the single most interesting or best-wr
     const bestQuote = quoteMatch ? quoteMatch[1].trim() : answer.slice(0, 80)
     const critique = text.split('SCORE:')[0].trim()
 
-    // Save to Firestore
+    // Save to Firestore — anonymous users get a unique ID so they don't overwrite each other
+    const docId = (!userId || userId === 'anonymous') ? crypto.randomUUID() : userId
     const db = getAdminDb()
     await withTimeout(
-      db.collection('puzzleSubmissions').doc(date).collection('entries').doc(userId).set({
+      db.collection('puzzleSubmissions').doc(date).collection('entries').doc(docId).set({
         displayName,
         score,
         bestQuote,
         critique,
-        userId,
+        userId: docId,
         timestamp: new Date(),
       }),
       8000,
@@ -50,7 +51,7 @@ Then on a new line write exactly: QUOTE: [the single most interesting or best-wr
     // Get leaderboard
     const snapshot = await withTimeout(
       db.collection('puzzleSubmissions').doc(date).collection('entries')
-        .orderBy('score', 'desc').limit(10).get(),
+        .orderBy('score', 'desc').limit(20).get(),
       8000,
       'fetch leaderboard'
     )
