@@ -26,7 +26,9 @@ export async function GET() {
     const docRef = db.collection('dailyPuzzles').doc(today)
 
     const doc = await withTimeout(docRef.get(), 8000, 'fetch puzzle')
-    console.log('[daily-puzzle] Firestore fetch complete, doc.exists:', doc.exists)
+    console.log('[daily-puzzle] today:', today)
+    console.log('[daily-puzzle] doc.exists:', doc.exists)
+    console.log('[daily-puzzle] doc.data():', JSON.stringify(doc.data(), null, 2))
 
     if (doc.exists) {
       return NextResponse.json(doc.data())
