@@ -31,7 +31,7 @@ export async function GET() {
     console.log('[daily-puzzle] doc.data():', JSON.stringify(doc.data(), null, 2))
 
     if (doc.exists) {
-      return NextResponse.json(doc.data())
+      return NextResponse.json(doc.data(), { headers: { 'Cache-Control': 'no-store' } })
     }
 
     // Generate new puzzle
@@ -61,11 +61,11 @@ export async function GET() {
     const puzzle = { date: today, professor, question, createdAt: new Date().toISOString() }
     await withTimeout(docRef.set(puzzle), 8000, 'save puzzle')
 
-    return NextResponse.json(puzzle)
+    return NextResponse.json(puzzle, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Daily puzzle error:', message)
     const status = message.includes('timed out') || message.includes('Missing Firebase') ? 503 : 500
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: message }, { status, headers: { 'Cache-Control': 'no-store' } })
   }
 }
