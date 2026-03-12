@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getAdminDb, withTimeout } from '../../../lib/firebaseAdmin'
+import { getTodayInTimezone } from '../../../lib/dateUtils'
 
 const client = new Anthropic()
 
@@ -22,7 +23,7 @@ export async function GET() {
     console.log('[daily-puzzle] calling getAdminDb()')
     const db = getAdminDb()
     console.log('[daily-puzzle] getAdminDb() succeeded, fetching Firestore doc')
-    const today = new Date().toISOString().split('T')[0]
+    const today = getTodayInTimezone()
     const docRef = db.collection('dailyPuzzles').doc(today)
 
     const doc = await withTimeout(docRef.get(), 8000, 'fetch puzzle')

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, withTimeout } from '../../../../lib/firebaseAdmin'
+import { getDateNDaysAgoInTimezone } from '../../../../lib/dateUtils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,11 +13,8 @@ export async function GET(req: NextRequest) {
 
     // Build doc refs for the last 90 days (one batch read instead of N sequential reads)
     const refs: FirebaseFirestore.DocumentReference[] = []
-    const base = new Date()
     for (let i = 0; i < 90; i++) {
-      const d = new Date(base)
-      d.setDate(d.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = getDateNDaysAgoInTimezone(i)
       refs.push(
         db.collection('puzzleSubmissions').doc(dateStr).collection('entries').doc(userId)
       )
