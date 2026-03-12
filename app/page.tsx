@@ -368,7 +368,7 @@ export default function Home() {
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10)
-    const solved = localStorage.getItem(`dailyPuzzleSolved_${today}`)
+    const solved = localStorage.getItem(`dailyPuzzleSubmitted_${today}`)
     if (solved) {
       setPuzzleSolved(true)
       fetch('/api/daily-puzzle/leaderboard')
