@@ -259,7 +259,7 @@ function SessionCard({ session }: { session: SavedSession }) {
 
 // ---------- Progress Section ----------
 
-function ProgressSection({ sessions, streak }: { sessions: SavedSession[], streak: number | null }) {
+function ProgressSection({ sessions }: { sessions: SavedSession[] }) {
   const totalSessions = sessions.length
   const allScores = sessions.flatMap((s) => s.scores)
   const overallAvg =
@@ -278,7 +278,7 @@ function ProgressSection({ sessions, streak }: { sessions: SavedSession[], strea
         <div className="flex-1 h-px bg-zinc-800" />
       </div>
 
-      <div className={`grid gap-3 mb-4 grid-cols-2 ${streak !== null ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
+      <div className="grid gap-3 mb-4 grid-cols-2 sm:grid-cols-4">
         {/* Total sessions */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
           <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Sessions</p>
@@ -309,17 +309,6 @@ function ProgressSection({ sessions, streak }: { sessions: SavedSession[], strea
           )}
         </div>
 
-        {/* Streak — only shown when logged in */}
-        {streak !== null && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
-            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Streak</p>
-            <p className="text-2xl font-bold font-mono text-amber-400">
-              {streak}
-              <span className="text-base ml-1">🔥</span>
-            </p>
-          </div>
-        )}
-
         {/* Most common pattern */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
           <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">Top Pattern</p>
@@ -348,7 +337,7 @@ function ProgressSection({ sessions, streak }: { sessions: SavedSession[], strea
 
 export default function Home() {
   const router = useRouter()
-  const { user, signInWithGoogle } = useAuth()
+  useAuth()
   const [showCustomModal, setShowCustomModal] = useState(false)
   const [customTopic, setCustomTopic] = useState('')
   const topicInputRef = useRef<HTMLInputElement>(null)
@@ -357,34 +346,11 @@ export default function Home() {
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const [dashboardLoaded, setDashboardLoaded] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [puzzleSolved, setPuzzleSolved] = useState(false)
-  const [leaderboard, setLeaderboard] = useState<any[]>([])
-  const [streak, setStreak] = useState<number | null>(null)
 
   useEffect(() => {
     setSessions(loadSessions())
     setDashboardLoaded(true)
   }, [])
-
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    const solved = localStorage.getItem(`dailyPuzzleSubmitted_${today}`)
-    if (solved) {
-      setPuzzleSolved(true)
-      fetch('/api/daily-puzzle/leaderboard')
-        .then((r) => r.json())
-        .then((data) => setLeaderboard(data.leaderboard || []))
-        .catch(() => {})
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
-    fetch(`/api/daily-puzzle/streak?userId=${user.uid}`)
-      .then((r) => r.json())
-      .then((data) => setStreak(data.streak ?? null))
-      .catch(() => {})
-  }, [user])
 
   const handleCustomTopic = () => {
     const t = customTopic.trim()
@@ -432,41 +398,6 @@ export default function Home() {
             <br />
             Pick a topic. Defend your reasoning.
           </p>
-        </div>
-
-        {/* Daily Puzzle + Leaderboard Cards */}
-        <div className="flex gap-4 mb-8">
-          <a href="/daily-puzzle" className="flex-1 block p-5 rounded-xl border border-red-800/50 bg-red-950/20 hover:border-red-600/70 hover:bg-red-950/30 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] text-red-500 uppercase tracking-widest mb-1">Daily Puzzle</div>
-                <p className="text-zinc-100 font-semibold text-sm">Solve to see leaderboard</p>
-              </div>
-              <span className="text-2xl">🎯</span>
-            </div>
-          </a>
-          {puzzleSolved ? (
-            <a href="/daily-puzzle/leaderboard" className="flex-1 block p-5 rounded-xl border border-blue-800/50 bg-blue-950/20 hover:border-blue-600/70 hover:bg-blue-950/30 transition-all duration-200">
-              <div className="text-[10px] text-blue-500 uppercase tracking-widest mb-2">Leaderboard</div>
-              {leaderboard.slice(0, 3).map((entry, i) => (
-                <div key={entry.id} className="flex items-center justify-between mb-1">
-                  <span className="text-zinc-400 text-xs truncate">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} {entry.displayName}</span>
-                  <span className="text-zinc-400 text-xs font-mono ml-2">{entry.score}</span>
-                </div>
-              ))}
-              <p className="text-blue-500 text-xs mt-2">See all →</p>
-            </a>
-          ) : (
-            <div className="flex-1 p-5 rounded-xl border border-blue-900/30 bg-blue-950/10 opacity-40 cursor-not-allowed">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] text-blue-500 uppercase tracking-widest mb-1">Leaderboard</div>
-                  <p className="text-zinc-500 text-sm">Solve puzzle to unlock</p>
-                </div>
-                <span className="text-2xl">🔒</span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Topic Grid */}
@@ -530,7 +461,7 @@ export default function Home() {
 
         {/* Progress — shown once localStorage is read */}
         {dashboardLoaded && (
-          <ProgressSection sessions={sessions} streak={streak} />
+          <ProgressSection sessions={sessions} />
         )}
 
         {/* Past Sessions — only shown when there are sessions */}
