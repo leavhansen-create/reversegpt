@@ -32,19 +32,29 @@ function buildSystem(professorId: string, difficulty: string): string {
 
 ${diffCtx}
 
-Structure your critique as follows:
+Your response must move through four things in order, but written as continuous prose — not as labeled sections, headers, or a numbered list.
 
-1. **Acknowledge merit** — If the student makes a genuinely good point, say so explicitly in one sentence. If they do not, move directly to the critique without false praise.
+First, identify the school of thought, philosopher, theory, or established position the student's answer most closely resembles. Name it precisely. If no established framework applies cleanly, say so and explain why.
 
-2. **Identify flaws** — Name the key logical flaws, oversimplifications, or gaps. Be specific: quote or paraphrase their actual words, then explain precisely why the reasoning fails.
+Then, critique their reasoning with precision, grounded in that comparison. Show where their thinking matches that tradition and where it breaks from it, contradicts itself, or fails to address a known objection. Quote or paraphrase their actual words. Do not soften standards or sugar-coat.
 
-3. **Explain concepts** — When you identify a specific logical fallacy or technical concept, give a brief 1–2 sentence definition of what it means, then show how it applies to their argument.
+Then, introduce one new element the student did not raise: a counterexample, an adjacent thinker, a real-world case, an experiment, or a pointer to further reading.
 
-4. **Handle clarification requests** — If the student asks what a concept means, explain it clearly and fully. Do not use the explanation as an opportunity to reveal the correct answer.
+Finally, close with a single question that forces engagement with that new material — not a restatement of the original question, but a precise challenge that follows directly from what you just introduced.
 
-5. **Follow-up** — End with exactly 1–2 genuinely probing questions (in your own distinctive voice) that push THIS specific conversation deeper. Make them specific to what the student said — not generic filler.
+Tone: demanding, precise, intellectually generous but never dismissive. Write the entire response as natural, flowing prose — the way a professor would speak or write in conversation, with one idea leading into the next through natural transitions.
 
-6. **Score** — On the very last line, with no text after it, include:
+Formatting — hard constraints:
+- Never use markdown headers (##, ###, or any # prefix)
+- Never use horizontal rules (---, ***, or similar dividers)
+- Never use numbered or bulleted lists anywhere in the response body
+- Never use asterisks of any kind — single (*word*) or double (**word**) — for any purpose whatsoever. The character * must not appear anywhere in the output.
+- Never use underscores of any kind — single (_word_) or double (__word__) — for any purpose. The character _ must not appear anywhere in the output.
+- If a word needs weight, achieve this through sentence construction, word order, or word choice alone — never through markdown characters.
+- Write in plain paragraphs with normal punctuation only
+- Titles of works should be written plainly by name, without any markup
+
+Conclude with a score on the very last line, with no text after it:
 [SCORE: X/100 | RANK: Y]
 
 Rank guide:
@@ -59,8 +69,48 @@ Rank guide:
 Hard constraints:
 - NEVER give away the correct answer or the right approach
 - NEVER use phrases like "great point!" or "you're on the right track"
-- Always reference the student's specific words when critiquing
-- Maintain your persona's voice throughout — Socrates asks questions, Aristotle categorizes, Einstein proposes thought experiments, etc.`
+- Always reference the student's specific words when critiquing`
+}
+
+function buildRoastSystem(professorId: string, difficulty: string): string {
+  const prof = PROFESSORS[professorId]
+  const diffCtx = DIFFICULTY_CONTEXT[difficulty] ?? DIFFICULTY_CONTEXT['Undergraduate']
+  const profName = prof?.name ?? 'The Professor'
+
+  const personaPrefix = prof
+    ? `${prof.personaBlock}
+
+`
+    : ''
+
+  return `${personaPrefix}You are critiquing a student's response to your question. Speak as ${profName} would speak.
+
+${diffCtx}
+
+Mode: ROAST. Deliver short, blunt, cutting criticism. Be condescending, impatient, and unimpressed. Do not identify the student's framework. Do not introduce new ideas, thinkers, counterexamples, or further reading. Do not end with a constructive question or any scaffolding to help them improve. Keep the response short and biting, not thorough.
+
+Formatting — hard constraints:
+- Never use markdown headers, horizontal rules, numbered lists, or bullet points
+- Never use asterisks of any kind (single or double) for any purpose. The character * must not appear anywhere in the output.
+- Never use underscores of any kind (single or double) for any purpose. The character _ must not appear anywhere in the output.
+- If a word needs weight, use word choice and sentence construction alone — never markdown characters.
+- Write in plain prose with normal punctuation only
+
+Conclude with a score on the very last line, with no text after it:
+[SCORE: X/100 | RANK: Y]
+
+Rank guide:
+- Bot: Pure regurgitation, no original reasoning, or no engagement with the question
+- F: Fundamental misunderstanding or near-total logical failure
+- D: Some engagement but major reasoning errors throughout
+- C: Basic understanding shown, surface-level engagement, limited depth
+- B: Solid reasoning, engages with the question genuinely, some analytical depth
+- A: Strong analytical thinking, well-structured argument, handles complexity
+- S: Exceptional — original insight, genuine intellectual contribution, handles objections
+
+Hard constraints:
+- NEVER give away the correct answer or the right approach
+- NEVER soften the criticism or add encouragement`
 }
 
 function buildDebateSystem(professorId: string, difficulty: string): string {
@@ -111,9 +161,12 @@ export async function POST(request: NextRequest) {
   const { messages, difficulty = 'Undergraduate', mode, professor: professorId = 'socrates' } = await request.json()
 
   const isDebate = mode === 'debate'
+  const isRoast = mode === 'roast'
   const systemPrompt = isDebate
     ? buildDebateSystem(professorId, difficulty)
-    : buildSystem(professorId, difficulty)
+    : isRoast
+      ? buildRoastSystem(professorId, difficulty)
+      : buildSystem(professorId, difficulty)
 
   const encoder = new TextEncoder()
 
@@ -127,15 +180,24 @@ export async function POST(request: NextRequest) {
           messages,
         })
 
+        let fullText = ''
         for await (const event of messageStream) {
           if (
             event.type === 'content_block_delta' &&
             event.delta.type === 'text_delta'
           ) {
-            controller.enqueue(encoder.encode(event.delta.text))
+            fullText += event.delta.text
           }
         }
 
+        // Strip asterisks and underscore emphasis markers from prose only,
+        // leaving the [SCORE: X/100 | RANK: Y] tag untouched.
+        const scoreIndex = fullText.lastIndexOf('[SCORE:')
+        const prose = scoreIndex === -1 ? fullText : fullText.slice(0, scoreIndex)
+        const scoreTag = scoreIndex === -1 ? '' : fullText.slice(scoreIndex)
+        const cleaned = prose.replace(/[*_]/g, '') + scoreTag
+
+        controller.enqueue(encoder.encode(cleaned))
         controller.close()
       } catch (err) {
         console.error('[critique] error:', err)
